@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeadXpert Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          screens: {
+            'xs': '375px'
+          },
+          colors: {
+            brand: {
+              50: '#f0f4fe',
+              100: '#dbe4fc',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              900: '#1e3a8a'
+            },
+            accent: {
+              50: '#fefce8',
+              100: '#fef9c3',
+              400: '#facc15',
+              500: '#eab308',
+              600: '#ca8a04'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    *, *::before, *::after {
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .premium-zoom {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+      will-change: transform, box-shadow;
+    }
+    
+    .premium-zoom:hover {
+      transform: translateY(-2px) scale(1.015);
+      box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+    }
+
+    input, select, textarea {
+      transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased" style="scroll-behavior: smooth;">
+
+  <nav class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center py-3 sm:h-16 gap-3">
+        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+          <div class="flex items-center space-x-2">
+            <button id="theme-toggle-btn" class="bg-brand-600 dark:bg-accent-500 text-white dark:text-slate-950 p-2 rounded-xl shadow-md cursor-pointer hover:bg-brand-700 dark:hover:bg-accent-600 premium-zoom flex items-center justify-center" title="Toggle UI Theme Mode">
+              <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+              <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+            </button>
+            <span class="text-base sm:text-lg font-bold bg-gradient-to-r from-brand-900 to-brand-600 dark:from-white dark:to-accent-100 bg-clip-text text-transparent">
+              LeadXpert Portal
+            </span>
+          </div>
+        </div>
+        
+        <div class="flex space-x-1 items-center w-full sm:w-auto overflow-x-auto py-1">
+          <button id="tab-dashboard" class="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50 cursor-pointer premium-zoom">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+            <span>Dashboard</span>
+          </button>
+          <button id="tab-analytics" class="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer premium-zoom">
+            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
+            <span>Analytics</span>
+          </button>
+          <button id="tab-add-lead" class="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer premium-zoom">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Add Student</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6">
+    
+    <div id="view-add-lead" class="hidden max-w-xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 sm:p-6 premium-zoom">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="p-2 bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 rounded-xl"><i data-lucide="user-plus" class="w-4 h-4"></i></div>
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Student Registration</h2>
+          <p class="text-[11px] sm:text-xs text-slate-400">Insert new candidate profiles securely into the database.</p>
+        </div>
+      </div>
+      
+      <div id="submit-success" class="hidden mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-semibold">
+        Success: Student record saved into database.
+      </div>
+
+      <form id="lead-form" class="space-y-3 sm:space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Full Name</label>
+            <input type="text" id="form-name" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none" placeholder="Rahul Kumar" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
+            <input type="email" id="form-email" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none" placeholder="rahul@example.com" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Phone Number</label>
+            <input type="tel" id="form-phone" required maxLength="10" pattern="[0-9]{10}" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none" placeholder="9876543210" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">City</label>
+            <input type="text" id="form-city" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none" placeholder="Delhi" />
+          </div>
+          <div class="xs:col-span-2 sm:col-span-1">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Age</label>
+            <input type="number" id="form-age" required value="18" min="1" max="100" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Website Hits</label>
+            <input type="number" id="form-visits" required value="1" min="0" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none" />
+          </div>
+          <div class="flex items-center pt-2 sm:pt-5">
+            <input type="checkbox" id="form-brochure" class="w-4 h-4 text-brand-600 border-slate-300 rounded cursor-pointer accent-brand-500" />
+            <label for="form-brochure" class="ml-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none">Downloaded Brochure</label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Academic Level</label>
+            <select id="form-qualification" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none cursor-pointer" required>
+
+              <option value="">Select Level</option>
+              <option value="10th Completed">10th Completed</option>
+              <option value="12th Completed">12th Completed</option>
+              <option value="Diploma">Diploma</option>
+              <option value="ITI">ITI</option>
+              <option value="Graduation">Graduation</option>
+              <option value="Post Graduation">Post Graduation</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Targeted Degree</label>
+            <select id="form-course" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none cursor-pointer" required>
+              <option value="">Select Course</option>
+              <option value="BTech">BTech</option>
+              <option value="BCA">BCA</option>
+              <option value="BSc Computer Science">BSc Computer Science</option>
+              <option value="BBA">BBA</option>
+              <option value="BCom">BCom</option>
+              <option value="MBA">MBA</option>
+              <option value="MCA">MCA</option>
+              <option value="Data Science Diploma">Data Science Diploma</option>
+              <option value="AI Tools">AI Tools</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="w-full mt-2 bg-brand-600 hover:bg-brand-700 dark:bg-accent-500 dark:hover:bg-accent-600 text-white dark:text-slate-950 font-bold py-2.5 rounded-xl text-xs cursor-pointer premium-zoom">
+          Save Student Registration
+        </button>
+      </form>
+    </div>
+
+    <div id="view-analytics" class="hidden space-y-4 sm:space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm premium-zoom">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2"><i data-lucide="graduation-cap" class="text-brand-500"></i> Course Distributions</h4>
+          <div id="analytics-course-list" class="space-y-4"></div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm premium-zoom">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2"><i data-lucide="git-branch" class="text-accent-500"></i> Student Status</h4>
+          <div id="analytics-status-list" class="space-y-4"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-dashboard" class="space-y-4 sm:space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between premium-zoom">
+          <div><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Active Leads</p><h3 id="stat-total" class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">0</h3></div>
+          <div class="p-2.5 bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 rounded-xl"><i data-lucide="users" class="w-4 h-4 sm:w-5 sm:h-5"></i></div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between premium-zoom">
+          <div><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Average Lead Rank Score</p><h3 id="stat-avg-score" class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">0%</h3></div>
+          <div class="p-2.5 bg-accent-50 dark:bg-accent-950/30 text-accent-600 dark:text-accent-400 rounded-xl"><i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5"></i></div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between premium-zoom">
+          <div><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Conversion Pipeline</p><h3 id="stat-conversion" class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">0%</h3></div>
+          <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl"><i data-lucide="award" class="w-4 h-4 sm:w-5 sm:h-5"></i></div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
+        <div class="relative w-full md:w-72">
+          <i data-lucide="search" class="absolute left-3 top-3 text-slate-400 w-3.5 h-3.5"></i>
+          <input type="text" id="search-input" placeholder="Search profiles..." class="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs rounded-xl outline-none dark:text-white" />
+        </div>
+
+        <div class="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap">
+          <select id="filter-status" class="border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 bg-white dark:bg-slate-800 text-xs font-bold outline-none cursor-pointer dark:text-white hover:border-slate-400 dark:hover:border-slate-500">
+            <option value="All">All Statuses</option>
+            <option value="New">New</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Qualified">Qualified</option>
+            <option value="Enrolled">Enrolled</option>
+            <option value="Lost">Lost</option>
+          </select>
+          
+          <div class="flex items-center gap-1.5 overflow-x-auto">
+            <button id="open-doc-btn" class="flex items-center space-x-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer premium-zoom">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-brand-500 dark:text-accent-400"></i>
+              <span>View Scoring Rules</span>
+            </button>
+
+            <button id="export-excel-btn" class="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer premium-zoom">
+              <i data-lucide="download-cloud" class="w-3.5 h-3.5"></i>
+              <span class="hidden xs:inline">Export</span>
+            </button>
+
+            <button id="refresh-btn" class="p-2 border border-slate-200 dark:border-slate-700 text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 cursor-pointer premium-zoom">
+              <i data-lucide="refresh-cw" id="refresh-icon" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[700px]">
+            <thead>
+              <tr class="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                <th class="px-6 py-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-accent-400 transition-colors" id="sort-name" onclick="toggleSortingKey('name')">Student ↑↓</th>
+                <th class="px-6 py-3.5">City Location</th>
+                <th class="px-6 py-3.5">Academic Intent</th>
+                <th class="px-6 py-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-accent-400 transition-colors" id="sort-weight" onclick="toggleSortingKey('weight')">Lead Index Score ↑↓</th>
+                <th class="px-6 py-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-brand-600 dark:hover:text-accent-400 transition-colors" id="sort-status" onclick="toggleSortingKey('status')">Status ↑↓</th>
+                <th class="px-6 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs dark:text-slate-300"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="drawer-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 hidden opacity-0 transition-opacity duration-200"></div>
+  <div id="engagement-drawer" class="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl z-50 transform translate-x-full transition-transform duration-200 flex flex-col">
+    <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/20">
+      <div>
+        <h3 id="drawer-student-name" class="text-base font-bold text-slate-900 dark:text-white tracking-tight">Student Profile</h3>
+        <p id="drawer-student-meta" class="text-[11px] text-brand-600 dark:text-accent-400 font-semibold mt-0.5">Course tracking details</p>
+      </div>
+      <button id="close-drawer-btn" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    
+    <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4">
+      <div class="bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 premium-zoom">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Calculated Priority Score</span>
+          <span id="ai-ml-probability-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-md"></span>
+        </div>
+        <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div id="ai-ml-progress-bar" class="h-full transition-all duration-300"></div>
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Counselor Profile Notes</label>
+        <textarea id="drawer-notes-input" rows="3" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50/30 text-xs rounded-xl outline-none resize-none dark:text-white focus:border-brand-500" placeholder="Type background checks or call logs here..."></textarea>
+        <button id="save-notes-btn" class="w-full bg-brand-600 hover:bg-brand-700 dark:bg-accent-500 dark:hover:bg-accent-600 text-white dark:text-slate-950 font-bold py-2 rounded-xl text-xs cursor-pointer premium-zoom">Save Note Entry</button>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Activity History Log</label>
+        <div id="notes-history-container" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="doc-modal-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-lg border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/40">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="file-text" class="text-brand-500 w-4 h-4"></i>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">System Formula Rules</h3>
+        </div>
+        <button id="close-doc-btn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg cursor-pointer"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      
+      <div id="pdf-print-canvas" class="p-4 sm:p-6 overflow-y-auto space-y-4 bg-white text-slate-800 font-mono text-[11px] leading-relaxed">
+        <div class="border-b-2 border-dashed border-slate-300 pb-3 text-center">
+          <div class="font-bold text-xs uppercase tracking-widest text-slate-900">LEADXPERT SYSTEM SCORE CONFIGURATION</div>
+          <div class="text-slate-400 text-[10px] mt-0.5">Balanced Distribution Criteria Matrix • Max 125 Pts Base</div>
+        </div>
+
+        <div>
+          <span class="font-bold text-slate-900 block uppercase tracking-wider mb-1">1. Core Parameter Goal</span>
+          <p class="text-slate-500">Each student profile automatically receives a score from 0% to 100%. This rating helps counselors instantly prioritize and manage leads inside the system.</p>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2 text-slate-600">
+          <span class="font-bold text-slate-900 block text-[10px] uppercase tracking-wider">2. Category Specific Weighting Maps</span>
+          <div class="space-y-1.5">
+            <div class="font-bold text-slate-700 border-b border-slate-200 pb-0.5">Course Selection Scale:</div>
+            <div class="flex justify-between pl-2"><span>• BTech Computer Science</span><span class="font-bold text-slate-900">+25 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• BCA Engineering</span><span class="font-bold text-slate-900">+15 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• BSc Computer Science</span><span class="font-bold text-slate-900">+20 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• MBA</span><span class="font-bold text-slate-900">+15 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• MCA</span><span class="font-bold text-slate-900">+15 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• BBA</span><span class="font-bold text-slate-900">+10 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• BCom</span><span class="font-bold text-slate-900">+8 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• Data Science Diploma</span><span class="font-bold text-slate-900">+10 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• AI Tools</span><span class="font-bold text-slate-900">+8 Pts</span></div>
+            
+            <div class="font-bold text-slate-700 border-b border-slate-200 pt-1 pb-0.5">Academic Qualification Scale:</div>
+            <div class="flex justify-between pl-2"><span>• Post Graduation</span><span class="font-bold text-slate-900">+25 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• Graduation Level Completed</span><span class="font-bold text-slate-900">+20 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• Diploma</span><span class="font-bold text-slate-900">+12 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• ITI</span><span class="font-bold text-slate-900">+10 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• 12th Standard Completed</span><span class="font-bold text-slate-900">+15 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• 10th Standard Completed</span><span class="font-bold text-slate-900">+5 Pts</span></div>
+
+            <div class="font-bold text-slate-700 border-b border-slate-200 pt-1 pb-0.5">Age Scale:</div>
+            <div class="flex justify-between pl-2"><span>• Primary Window (Ages 17-20)</span><span class="font-bold text-slate-900">+15 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• Secondary Window (Ages 21-24)</span><span class="font-bold text-slate-900">+8 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• All Other Age Brackets</span><span class="font-bold text-slate-900">+3 Pts</span></div>
+
+            <div class="font-bold text-slate-700 border-b border-slate-200 pt-1 pb-0.5">Engagement Logs & Threshold Warnings:</div>
+            <div class="flex justify-between pl-2"><span>• If student visits website >= 4 times</span><span class="font-bold text-slate-900">+20 Pts</span></div>
+            <div class="flex justify-between pl-2"><span>• If student downloaded brochure</span><span class="font-bold text-slate-900">+15 Pts</span></div>
+            <div class="flex justify-between pl-2 text-rose-600"><span>• If student visited website >= 3 times but didn't download the brochure</span><span class="font-bold text-rose-600">-10 Pts</span></div>
+          </div>
+        </div>
+
+        <div>
+          <span class="font-bold text-slate-900 block uppercase tracking-wider mb-1">3. Administrative Overrides</span>
+          <p class="text-slate-500">Manual selections bypass parameters. Profiles set to Enrolled lock to 100%. Profiles set to Lost drop to 5%.</p>
+        </div>
+      </div>
+
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-800/20">
+        <button id="download-pdf-btn" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl flex items-center space-x-1 cursor-pointer premium-zoom">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Download Rules PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+
+</body>
+</html>
